@@ -324,7 +324,7 @@ class JoinScriptTests(unittest.TestCase):
             env = {"HC_HUB": "http://x", "HC_TOKEN": "t", "HC_FOLDER": proj}
             with mock.patch.dict(os.environ, env):
                 g: dict = {}
-                exec(join_scripts.SYNC_PY.split('print("[*] Counting')[0], g)
+                exec(join_scripts.SYNC_PY.split('if FOLDER == norm("~")')[0], g)
             g["ROOT"] = tmp
             with open(os.path.join(tmp, "repos.json"), "w", encoding="utf-8") as f:
                 json.dump({"mine": os.path.join(proj, "sub"), "other": os.path.join(tmp, "proj2")}, f)
@@ -334,6 +334,38 @@ class JoinScriptTests(unittest.TestCase):
             self.assertTrue(g["in_folder"]({"sessionId": "c", "repos": ["mine"]}))  # no cwd: repo fallback
             self.assertFalse(g["in_folder"]({"sessionId": "d", "repos": ["other"]}))
             self.assertIsNone(g["in_folder"]({"sessionId": "e"}))
+
+    def test_sync_uploads_only_this_folders_recently_active_sessions(self):
+        from datetime import datetime, timedelta, timezone
+        with tempfile.TemporaryDirectory() as tmp:
+            proj = os.path.join(tmp, "proj")
+            env = {"HC_HUB": "http://x", "HC_TOKEN": "t", "HC_FOLDER": proj}
+            with mock.patch.dict(os.environ, env):
+                g: dict = {}
+                exec(join_scripts.SYNC_PY.split('if FOLDER == norm("~")')[0], g)
+            g["ROOT"] = tmp
+            now = datetime.now(timezone.utc)
+            iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")
+            recent, stale = iso(now - timedelta(minutes=10)), iso(now - timedelta(hours=2))
+            g["session_folders"] = lambda: {"here": proj, "idle": proj, "other": os.path.join(tmp, "proj2")}
+            rows = {
+                "here": {"sessionId": "here", "key": "here", "calls": 5, "updatedAt": recent},
+                "idle": {"sessionId": "idle", "key": "idle", "calls": 5, "updatedAt": stale},
+                "other": {"sessionId": "other", "key": "other", "calls": 5, "updatedAt": recent},
+                "nofolder": {"sessionId": "nofolder", "key": "nofolder", "calls": 5, "updatedAt": recent},
+            }
+            os.makedirs(os.path.join(tmp, "maps"))
+            for k in rows:
+                with open(os.path.join(tmp, "maps", k + ".json"), "w", encoding="utf-8") as f:
+                    f.write("{}")
+            with open(os.path.join(tmp, "index.json"), "w", encoding="utf-8") as f:
+                json.dump({"sessions": rows}, f)
+            posted = []
+            g["post"] = lambda path, body, ctype: posted.append(path) or {"calls": 5}
+            stats = g["sync"]()
+            self.assertEqual(posted, ["/api/upload"])
+            self.assertEqual(list(g["sent"]), ["here"])
+            self.assertEqual((stats["found"], stats["eligible"], stats["skipped"]), (1, 1, {}))
 
     def test_sh_quote_round_trips(self):
         for p in self.PAYLOADS:

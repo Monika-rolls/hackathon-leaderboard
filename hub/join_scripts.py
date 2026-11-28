@@ -2,8 +2,10 @@
 
 Both wrap the same small Python sync loop (SYNC_PY): agentplay needs Python anyway, and one
 loop keeps Windows and macOS/Linux behaving identically. The loop picks sessions from
-agentplay's index (not file times: `agentplay build` rewrites every map), skips sessions that
-started before the event, and re-uploads a session only when its content hash changes.
+agentplay's index (not file times: `agentplay build` rewrites every map) and uploads only
+sessions run in the folder the command was started in and active in the last hour (and,
+with an event start, started after it). Every other session is ignored without being
+counted or reported. A session is re-uploaded only when its content hash changes.
 
 Every value placed in a script is a quoted literal (no expansion), so names, teams, tokens
 and the hub URL can never become code. SYNC_PY itself is a constant.
@@ -35,13 +37,15 @@ def ts(value):
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-# With an event start, only sessions started after it count (the hub applies the same rule).
-# Without one, any session with activity in the last 12 hours counts.
+# Only sessions with activity in the last ACTIVE_HOURS are read or uploaded. With an event
+# start, a session must also have started after it (the hub applies the same rule).
+ACTIVE_HOURS = 1
 SINCE = ts(os.environ.get("HC_SINCE") or "")
-CUTOFF = SINCE or datetime.now(timezone.utc) - timedelta(hours=12)
-TOO_OLD = "started before the event" if SINCE else "no activity in the last 12 hours"
-OUTSIDE = "run outside this folder"
-UNKNOWN = "folder unknown"
+BEFORE_EVENT = "started before the event"
+
+
+def active_cutoff():
+    return datetime.now(timezone.utc) - timedelta(hours=ACTIVE_HOURS)
 
 _AG = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity")
 if os.path.isdir(_AG):
@@ -108,7 +112,9 @@ def in_folder(r):
 def build():
     """Run agentplay build; return an error line, or '' on success."""
     exe = shutil.which("agentplay")
-    cmd = [exe, "build"] if exe else [sys.executable, "-m", "agentplay", "build"]
+    # Build only recently active sessions, with repo-relative paths (never full laptop paths).
+    args = ["build", "--since", "%dh" % ACTIVE_HOURS, "--path-mode", "relative"]
+    cmd = [exe] + args if exe else [sys.executable, "-m", "agentplay"] + args
     env = dict(os.environ)
     try:
         res = subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=False)
@@ -130,8 +136,20 @@ def post(path, body, ctype):
 sent = {}
 
 
+def eligible(r, cutoff):
+    """Main session, active within the window, run in FOLDER. Anything else is ignored
+    silently: other folders' sessions are never counted, reported or uploaded."""
+    if r.get("role") in ("subagent", "helper") or not r.get("calls"):
+        return False
+    last = ts(r.get("endedAt") or r.get("updatedAt") or r.get("startedAt") or "")
+    if last is None or last < cutoff:
+        return False
+    return in_folder(r) is True  # unknown folder never counts
+
+
 def sync():
     stats = {"found": 0, "eligible": 0, "uploaded": 0, "skipped": {}, "agents": set()}
+    cutoff = active_cutoff()
 
     def skip(reason):
         stats["skipped"][reason] = stats["skipped"].get(reason, 0) + 1
@@ -142,18 +160,15 @@ def sync():
     except (OSError, ValueError):
         rows = []
     for r in rows:
-        if r.get("role") in ("subagent", "helper") or not r.get("calls"):
+        if not eligible(r, cutoff):
             continue
         stats["found"] += 1
         stats["agents"].add(str(r.get("agentTool") or "unknown"))
-        inside = in_folder(r)
-        if not inside:
-            skip(OUTSIDE if inside is False else UNKNOWN)
-            continue
-        when = ts(r.get("startedAt") or "") if SINCE else ts(r.get("endedAt") or r.get("updatedAt") or r.get("startedAt") or "")
-        if when is not None and when < CUTOFF:
-            skip(TOO_OLD)
-            continue
+        if SINCE:
+            started = ts(r.get("startedAt") or "")
+            if started is None or started < SINCE:
+                skip(BEFORE_EVENT)
+                continue
         stats["eligible"] += 1
         sid = str(r.get("sessionId") or "")
         digest = "%s|%s" % (r.get("contentHash"), r.get("updatedAt"))
@@ -191,7 +206,8 @@ def sync():
 def heartbeat(stats, error):
     body = {"found": stats["found"], "eligible": stats["eligible"], "uploaded": stats["uploaded"],
             "synced": len(sent), "skipped": stats["skipped"], "agents": sorted(stats["agents"]),
-            "error": error, "since": CUTOFF.strftime("%Y-%m-%dT%H:%M:%SZ"), "client": CLIENT}
+            "error": error, "since": max(filter(None, [SINCE, active_cutoff()])).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "client": CLIENT}
     try:
         post("/api/heartbeat", json.dumps(body).encode("utf-8"), "application/json")
     except urllib.error.HTTPError as e:
@@ -205,19 +221,19 @@ def explain(stats, error):
     if error:
         print("[-] agentplay build failed: %s" % error, flush=True)
     if not stats["found"]:
-        print("[!] No agent sessions found on this laptop yet. Use a supported tool (%s);" % TOOLS, flush=True)
-        print("    your activity appears here within %ss. To check what agentplay sees: python -m agentplay agents" % INTERVAL, flush=True)
+        print("[!] No agent session active in the last %dh in this folder yet. Start one here with a" % ACTIVE_HOURS, flush=True)
+        print("    supported tool (%s); it appears within %ss." % (TOOLS, INTERVAL), flush=True)
         return
     reasons = ", ".join("%d %s" % (n, why) for why, n in sorted(stats["skipped"].items()))
-    print("[*] Found %d agent session(s) (%s); %d count%s." % (
+    print("[*] %d active session(s) in this folder (%s); %d count%s." % (
         stats["found"], ", ".join(sorted(stats["agents"])), stats["eligible"], " - not counted: " + reasons if reasons else ""), flush=True)
     if not stats["eligible"]:
         print("[!] None count yet. Start (or keep using) an agent session in %s; it appears within %ss." % (FOLDER, INTERVAL), flush=True)
 
 
-print("[*] Counting only agent sessions run in: %s" % FOLDER, flush=True)
-if FOLDER in (norm("~"), norm(os.sep)) or os.path.dirname(FOLDER) == FOLDER:
-    print("[!] That is your home folder or a drive root, so almost every session counts. cd into your project first.", flush=True)
+if FOLDER == norm("~") or os.path.dirname(FOLDER) == FOLDER:
+    sys.exit("[-] %s is your home folder or a drive root. cd into your project folder and run this again." % FOLDER)
+print("[*] Watching only: %s (sessions active in the last %dh). Nothing else is uploaded." % (FOLDER, ACTIVE_HOURS), flush=True)
 print("[*] Building your local session index (first run can take a minute)...", flush=True)
 error = build()
 stats = sync()
