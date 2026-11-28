@@ -335,6 +335,39 @@ class JoinScriptTests(unittest.TestCase):
             self.assertFalse(g["in_folder"]({"sessionId": "d", "repos": ["other"]}))
             self.assertIsNone(g["in_folder"]({"sessionId": "e"}))
 
+    def test_source_folder_reads_each_tools_own_session_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            env = {"HC_HUB": "http://x", "HC_TOKEN": "t", "HC_FOLDER": tmp}
+            with mock.patch.dict(os.environ, env):
+                g: dict = {}
+                exec(join_scripts.SYNC_PY.split('if FOLDER == norm("~")')[0], g)
+            proj = os.path.join(tmp, "proj")
+            proj_uri = "file:///" + proj.replace(os.sep, "/").replace(":", "%3A")
+
+            def write(rel, text):
+                path = os.path.join(tmp, rel)
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                return path
+
+            line = lambda d: json.dumps(d) + chr(10)  # noqa: E731
+            cases = {
+                "claude/codex/copilot cli": write("a.jsonl", line({"type": "meta", "payload": {"cwd": proj}})),
+                "goose": write("b.jsonl", line({"working_dir": proj})),
+                "opencode": write("c.json", json.dumps({"id": "x", "directory": proj})),
+                "tool input before cwd": write("d.jsonl", line({"input": {"directory": "/elsewhere"}}) + line({"cwd": proj})),
+                "vscode workspace": write(os.path.join("workspaceStorage", "h", "chatSessions", "e.jsonl"), "{}"),
+                "gemini": write(os.path.join("gemini", "tmp", "p", "chats", "f.json"), "{}"),
+            }
+            write(os.path.join("workspaceStorage", "h", "workspace.json"), json.dumps({"folder": proj_uri}))
+            write(os.path.join("gemini", "tmp", "p", ".project_root"), proj)
+            for name, src in cases.items():
+                with self.subTest(name):
+                    self.assertEqual(g["norm"](g["source_folder"]({"sourcePath": src})), g["norm"](proj))
+            self.assertEqual(g["source_folder"]({"sourcePath": write("g.jsonl", line({"x": 1}))}), "")
+            self.assertEqual(g["source_folder"]({"sourcePath": os.path.join(tmp, "gone.jsonl")}), "")
+
     def test_sync_uploads_only_this_folders_recently_active_sessions(self):
         from datetime import datetime, timedelta, timezone
         with tempfile.TemporaryDirectory() as tmp:

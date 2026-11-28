@@ -18,7 +18,7 @@ import re
 SYNC_INTERVAL_S = 20
 
 SYNC_PY = r'''
-import gzip, json, os, shutil, subprocess, sys, time, urllib.error, urllib.request
+import gzip, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
 HUB = os.environ["HC_HUB"].rstrip("/")
@@ -26,7 +26,7 @@ TOKEN = os.environ["HC_TOKEN"]
 INTERVAL = int(os.environ.get("HC_INTERVAL") or 20)
 ROOT = os.path.join(os.path.expanduser("~"), ".agentplay")
 CLIENT = "sync/2"
-TOOLS = "Claude Code, Cursor, Codex, Copilot, Gemini CLI, OpenCode, Antigravity"
+TOOLS = "Claude Code, Cursor, Codex, Copilot, Gemini CLI, OpenCode, Antigravity, Kiro, Goose, Command Code"
 
 
 def ts(value):
@@ -83,8 +83,69 @@ def session_folders():
         return {}
 
 
+# Keys tools use for the folder they ran in, strongest first: Claude Code, Codex, Copilot CLI
+# and command-code write "cwd", goose "working_dir", OpenCode "directory".
+_STRONG = ("cwd", "working_dir", "workingDirectory", "workspaceFolder", "projectRoot", "project_root")
+_WEAK = ("directory", "workdir")
+_KEY = re.compile(r'"(%s)"\s*:\s*"((?:[^"\\]|\\.){2,1000})"' % "|".join(_STRONG + _WEAK))
+
+
+def _path(value):
+    """A plain absolute path from a path or file:// URI, or ''."""
+    v = str(value or "").strip()
+    if v.startswith("file://"):
+        v = urllib.parse.unquote(v[7:])
+        if re.match(r"^/[A-Za-z]:", v):  # file:///c:/x on Windows
+            v = v[1:]
+    return v if v and os.path.isabs(v) else ""
+
+
+def source_folder(r):
+    """The folder the tool itself recorded for a session, read from the tool's own session
+    file on this laptop (index "sourcePath"). Covers tools whose folder agentplay's index
+    leaves out. Read locally only; nothing extra is uploaded."""
+    src = str(r.get("sourcePath") or "")
+    if not src or not os.path.isfile(src):
+        return ""
+    d = os.path.dirname(src)
+    for _ in range(3):
+        # VS Code family (Copilot Chat, Cursor): the workspace folder sits beside the chats.
+        if "workspaceStorage" in d:
+            try:
+                with open(os.path.join(d, "workspace.json"), encoding="utf-8") as f:
+                    found = _path(json.load(f).get("folder"))
+                if found:
+                    return found
+            except (OSError, ValueError, AttributeError):
+                pass
+        # Gemini CLI: a project's chats live under a folder holding .project_root.
+        try:
+            with open(os.path.join(d, ".project_root"), encoding="utf-8") as f:
+                found = _path(f.read())
+            if found:
+                return found
+        except OSError:
+            pass
+        d = os.path.dirname(d)
+    try:
+        with open(src, encoding="utf-8", errors="replace") as f:
+            head = f.read(512 * 1024)  # tools record the folder at the start
+    except OSError:
+        return ""
+    weak = ""
+    for m in _KEY.finditer(head):
+        try:
+            found = _path(json.loads('"%s"' % m.group(2)))
+        except ValueError:
+            continue
+        if found and m.group(1) in _STRONG:
+            return found
+        weak = weak or found
+    return weak
+
+
 def repo_roots():
-    """Repo name -> its checkout (agentplay's repos.json): the fallback for tools with no cwd."""
+    """Repo name -> its checkout (agentplay's repos.json): the last fallback."""
     try:
         with open(os.path.join(ROOT, "repos.json"), encoding="utf-8") as f:
             d = json.load(f)
@@ -101,7 +162,8 @@ def in_folder(r):
     sid = str(r.get("sessionId") or "")
     if sid not in folders:
         folders.update(session_folders())
-        folders.setdefault(sid, "")  # don't rescan for it every cycle
+        if not folders.get(sid):
+            folders[sid] = source_folder(r)  # "" means unknown; don't rescan every cycle
     if folders[sid]:
         return within(folders[sid])
     roots = repo_roots()
