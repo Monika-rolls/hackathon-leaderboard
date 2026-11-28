@@ -417,10 +417,34 @@ class Handler(BaseHTTPRequestHandler):
             team_winners = _pick_winners(payload["teams"], "teams") if entity in ("teams", "both") else []
             player_winners = _pick_winners(payload["players"], "players") if entity in ("players", "both") else []
             winners_list = player_winners if entity == "players" else team_winners
+
+            # Final snapshot: everyone's overall rank and which badges they earned.
+            def _standing(item, kind):
+                m = item.get("metrics") or {}
+                return {"rank": item["rank"], "name": item["name"],
+                        "subtitle": item.get("team", "") if kind == "players" else f"{item.get('memberCount', 1)} members",
+                        "calls": m.get("calls", 0), "tokens": m.get("tokens", 0), "commits": m.get("commits", 0),
+                        "badges": item.get("badges") or {}, "crowns": item.get("crowns") or []}
+
+            standings = {"players": [_standing(p, "players") for p in payload["players"]],
+                         "teams": [_standing(t, "teams") for t in payload["teams"]]}
+
+            def _badge_winners(defs, rows):
+                out = []
+                for b in defs:
+                    earners = [{"name": r["name"], "subtitle": r["subtitle"], "tier": r["badges"][b["id"]],
+                                "crown": b["id"] in r["crowns"]} for r in rows if b["id"] in r["badges"]]
+                    earners.sort(key=lambda e: (not e["crown"], -e["tier"]))
+                    out.append({"id": b["id"], "name": b["name"], "rule": b.get("rule", ""), "earners": earners})
+                return out
+
+            badge_winners = {"personal": _badge_winners(payload["awards"]["personal"], standings["players"]),
+                             "team": _badge_winners(payload["awards"]["team"], standings["teams"])}
             import time as _time
             win_doc = {
                 "ended": True, "topN": top_n, "entity": entity,
                 "winners": winners_list, "teamWinners": team_winners, "playerWinners": player_winners,
+                "standings": standings, "badgeWinners": badge_winners,
                 "endedAt": int(_time.time()),
             }
             store.meta_set("winners", win_doc)

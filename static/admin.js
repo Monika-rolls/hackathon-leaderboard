@@ -144,6 +144,53 @@
     await loadPeople();
   }
 
+  // ---------- final results (snapshot taken when the event ended) ----------
+  async function finalResultsHtml(w) {
+    if (!w.standings && !w.badgeWinners) return "";
+    let defs = {};
+    try { defs = (await HC.badges()).by; } catch (_) {}
+    const head = (t) => `<summary class="h3" style="cursor:pointer;margin:22px 0 10px">${t}</summary>`;
+
+    const table = (rows, label) => !rows?.length ? "" : `
+      <details open>${head(`${label} · overall (${rows.length})`)}
+        <div style="overflow-x:auto"><table class="lb"><thead><tr><th>#</th><th>Name</th><th class="r">Tool calls</th>
+          <th class="r hide-sm">Tokens</th><th class="r hide-sm">Commits</th><th>Badges</th></tr></thead><tbody>
+          ${rows.map((r) => `<tr><td>${r.rank}</td>
+            <td><b>${esc(r.name)}</b><div class="muted" style="font-size:12px">${esc(r.subtitle || "")}</div></td>
+            <td class="r">${fmt(r.calls)}</td><td class="r hide-sm">${fmt(r.tokens)}</td><td class="r hide-sm">${fmt(r.commits)}</td>
+            <td>${HC.badgeRow(r.badges, r.crowns, 10, 24)}</td></tr>`).join("")}
+        </tbody></table></div>
+      </details>`;
+
+    const badgeList = (list, label) => {
+      const earned = (list || []).filter((b) => b.earners.length);
+      if (!earned.length) return "";
+      return `<details open>${head(`${label} · who got what (${earned.length} awarded)`)}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-items:start">
+          ${earned.map((b) => {
+            const def = defs[b.id];
+            const top = Math.max(...b.earners.map((e) => e.tier));
+            return `<div class="card soft" style="padding:14px">
+              <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+                ${def ? HC.badge(def, top, 40) : ""}
+                <div><b>${esc(b.name)}</b><div class="muted" style="font-size:12px">${esc(b.rule || "")}</div></div>
+              </div>
+              ${b.earners.map((e) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0">
+                <span>${e.crown ? "👑 " : ""}${esc(e.name)}<span class="muted"> · ${esc(e.subtitle || "")}</span></span>
+                <span class="muted">${esc(HC.TIER[e.tier] || "")}</span></div>`).join("")}
+            </div>`;
+          }).join("")}
+        </div>
+      </details>`;
+    };
+
+    const st = w.standings || {}, bw = w.badgeWinners || {};
+    return `<div style="margin-top:8px">
+      ${table(st.players, "Builders")}${table(st.teams, "Teams")}
+      ${badgeList(bw.personal, "Builder badges")}${badgeList(bw.team, "Team badges")}
+    </div>`;
+  }
+
   // ---------- end event & announce winners ----------
   async function renderEndEvent() {
     const box = document.getElementById("endEvent");
@@ -186,6 +233,7 @@
           ${w.entity === "both"
             ? podHtml(w.teamWinners, "Top Teams") + podHtml(w.playerWinners, "Top Individual Builders")
             : podHtml(w.winners, "")}
+          ${await finalResultsHtml(w)}
         </div>`;
       return;
     }

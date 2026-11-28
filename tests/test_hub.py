@@ -481,6 +481,29 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.req("/api/admin/participants")[0], 403)
         self.assertEqual(self.req("/admin")[0], 200)
 
+    def test_end_event_snapshots_standings_and_badges(self):
+        hdr = {"X-Admin-Token": "s3cret", "Content-Type": "application/json"}
+        post = lambda path, body: self.req(path, json.dumps(body).encode(), hdr)  # noqa: E731
+        with mock.patch.dict(os.environ, {"HUB_ADMIN_TOKEN": "s3cret"}):
+            self.assertEqual(post("/api/admin/sessions", {"action": "create", "slug": "finale"})[0], 200)
+            for name, team, calls in (("Fin Ada", "Alpha", 600), ("Fin Bo", "Beta", 40)):
+                _, _, body = self.req("/api/register?s=finale", json.dumps({"name": name, "team": team}).encode(),
+                                      {"Content-Type": "application/json"})
+                token = json.loads(body)["token"]
+                self.req("/api/upload", gzip.compress(json.dumps(make_map(name, calls=calls)).encode()),
+                         {"X-Upload-Token": token})
+            srv.Handler.registry.get("finale").invalidate()
+            status, _, body = post("/api/admin/end-event?s=finale", {"topN": 3, "entity": "both"})
+            self.assertEqual(status, 200, body)
+        w = json.loads(self.req("/api/config?s=finale")[2])["winners"]
+        self.assertEqual([p["name"] for p in w["standings"]["players"]], ["Fin Ada", "Fin Bo"])
+        self.assertEqual([t["name"] for t in w["standings"]["teams"]], ["Alpha", "Beta"])
+        ada = w["standings"]["players"][0]
+        self.assertTrue(ada["badges"])
+        for bid in ada["badges"]:
+            entry = next(b for b in w["badgeWinners"]["personal"] if b["id"] == bid)
+            self.assertIn("Fin Ada", [e["name"] for e in entry["earners"]])
+
     def test_sessions_routing_and_admin(self):
         hdr = {"X-Admin-Token": "s3cret", "Content-Type": "application/json"}
         post = lambda path, body: self.req(path, json.dumps(body).encode(), hdr)  # noqa: E731
