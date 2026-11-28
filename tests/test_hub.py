@@ -342,7 +342,8 @@ class JoinScriptTests(unittest.TestCase):
                 g: dict = {}
                 exec(join_scripts.SYNC_PY.split('if FOLDER == norm("~")')[0], g)
             proj = os.path.join(tmp, "proj")
-            proj_uri = "file:///" + proj.replace(os.sep, "/").replace(":", "%3A")
+            # As VS Code writes it: file:///home/x on POSIX, file:///c%3A/Users/x on Windows.
+            proj_uri = "file://" + "/" + proj.replace(os.sep, "/").lstrip("/").replace(":", "%3A")
 
             def write(rel, text):
                 path = os.path.join(tmp, rel)
