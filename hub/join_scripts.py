@@ -266,7 +266,7 @@ def sh_quote(value: str) -> str:
 
 def ps1(hub_url: str, token: str, name: str, team: str, since: str = "") -> str:
     head = (
-        "# Hackathon Control - live sync (Windows PowerShell). Press Ctrl+C to stop.\n"
+        "# Catalyst - live sync (Windows PowerShell). Press Ctrl+C to stop.\n"
         f"$env:HC_HUB = {ps_quote(hub_url)}\n"
         f"$env:HC_TOKEN = {ps_quote(token)}\n"
         f"$env:HC_SINCE = {ps_quote(since)}\n"
@@ -276,7 +276,7 @@ def ps1(hub_url: str, token: str, name: str, team: str, since: str = "") -> str:
     )
     body = r"""
 Write-Host ""
-Write-Host "  Hackathon Control  |  $Name  ($Team)" -ForegroundColor Cyan
+Write-Host "  Catalyst  |  $Name  ($Team)" -ForegroundColor Cyan
 Write-Host "  Syncing to $env:HC_HUB" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -300,7 +300,7 @@ if (-not (Get-Command agentplay -ErrorAction SilentlyContinue)) {
     }
 }
 
-$sync = Join-Path ([IO.Path]::GetTempPath()) "hackathon-control-sync.py"
+$sync = Join-Path ([IO.Path]::GetTempPath()) "catalyst-sync.py"
 Set-Content -Path $sync -Value @'
 """ + SYNC_PY.strip("\n") + r"""
 '@ -Encoding ASCII
@@ -312,7 +312,7 @@ Set-Content -Path $sync -Value @'
 def sh(hub_url: str, token: str, name: str, team: str, since: str = "") -> str:
     head = (
         "#!/usr/bin/env bash\n"
-        "# Hackathon Control - live sync (macOS / Linux). Press Ctrl+C to stop.\n"
+        "# Catalyst - live sync (macOS / Linux). Press Ctrl+C to stop.\n"
         f"export HC_HUB={sh_quote(hub_url)}\n"
         f"export HC_TOKEN={sh_quote(token)}\n"
         f"export HC_SINCE={sh_quote(since)}\n"
@@ -321,7 +321,7 @@ def sh(hub_url: str, token: str, name: str, team: str, since: str = "") -> str:
         f"TEAM={sh_quote(team)}\n"
     )
     body = r"""
-printf '\n  Hackathon Control  |  %s  (%s)\n  Syncing to %s\n\n' "$NAME" "$TEAM" "$HC_HUB"
+printf '\n  Catalyst  |  %s  (%s)\n  Syncing to %s\n\n' "$NAME" "$TEAM" "$HC_HUB"
 
 PY=""
 for cand in python3 python; do

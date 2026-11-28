@@ -1,4 +1,4 @@
-# Hackathon Control
+# Catalyst
 
 A live leaderboard for AI coding-agent activity at a hackathon. Each participant runs one
 command; their agent sessions (Claude Code, Cursor, Codex, Copilot, Antigravity, Gemini CLI,

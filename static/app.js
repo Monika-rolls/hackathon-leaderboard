@@ -1,4 +1,4 @@
-/* Hackathon Control — shared helpers: formatting, nav, avatars, SVG badges, live events. */
+/* Catalyst — shared helpers: formatting, nav, avatars, SVG badges, live events. */
 "use strict";
 
 const HC = (() => {
@@ -219,7 +219,7 @@ const HC = (() => {
   }
 
   async function nav(active) {
-    try { config = await api("/api/config"); } catch (_) { config = { name: "Hackathon Control" }; }
+    try { config = await api("/api/config"); } catch (_) { config = { name: "Catalyst" }; }
     document.title = document.title.replace("{event}", config.name);
     announce(config.announcement);
     if (active !== "admin" && config.winners) renderWinnersPopup(config.winners);
@@ -237,7 +237,7 @@ const HC = (() => {
     if (el) {
       el.className = "nav";
       el.innerHTML = `<div class="wrap">
-        <a class="brand" href="${withS("/")}"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>${esc(config.name)}</span></a>
+        <a class="brand" href="${withS("/")}"><img class="brand-mark" src="/static/favicon.svg" alt="" width="24" height="24"><span>${esc(config.name)}</span></a>
         <nav class="nav-links">${links.map(([h, l, k]) => `<a href="${withS(h)}" class="${k === active ? "active" : ""}">${l}</a>`).join("")}
         <a href="${withS("/join")}" class="cta">${me() ? "My sync" : "Join"}</a></nav></div>`;
     }

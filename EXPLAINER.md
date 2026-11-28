@@ -27,7 +27,7 @@ We created a **two-tier observability and gamification system**:
    - Strips away all private code, secrets, prompts, and file contents (**0% data leakage**).
    - Generates a lightweight, redacted `.json.gz` map containing only metadata (tool verbs, execution times, error classes, token costs).
    - Gives you a private local replay viewer on **port `7317`**.
-2. **Multi-User Hackathon Control Leaderboard (`server_7400.py`)**:
+2. **Multi-User Catalyst Leaderboard (`server_7400.py`)**:
    - A central hub running on **port `7400`**.
    - Receives redacted session maps from all participants.
    - Scores session health (`Run Health` from 0 to 100).
@@ -39,7 +39,7 @@ We created a **two-tier observability and gamification system**:
 
 | Feature | **Port `7317`** (`agentplay view`) | **Port `7400`** (`server_7400.py`) |
 | :--- | :--- | :--- |
-| **Name** | **Local Session Inspector** | **Hackathon Control Leaderboard** |
+| **Name** | **Local Session Inspector** | **Catalyst Leaderboard** |
 | **Audience** | Just you on your local machine | The whole hackathon (participants, mentors, judges) |
 | **Scope** | Single developer's sessions | Aggregates all teams and participants |
 | **What it shows** | Radial tool wheel, step timeline, diffs, exact error logs | Leaderboard ranks, Run Health score, 24h sparklines, live feed |
@@ -86,7 +86,7 @@ Here is how data moves from a developer's keystroke to the big-screen hackathon 
   radial map, timeline, & fixes.          `python sync_to_hub.py`        
                                                     │
                                                     ▼
-                                        [ Hackathon Control Hub ]
+                                        [ Catalyst Hub ]
                                           • Validates schema
                                           • Computes Run Health (0-100)
                                           • Aggregates Team stats
@@ -137,7 +137,7 @@ The standardized JSON format:
 - **Manual Web Upload**: Drag and drop `session.json.gz` directly onto the `:7400` dashboard modal.
 - **CLI Sync Daemon (`sync_to_hub.py`)**: Runs in the background on a participant's laptop. As they code, it builds and posts fresh session maps to `:7400` every 20 seconds, only for sessions run in the project folder and active in the last hour.
 
-### Layer 5: Hackathon Control Hub (`server_7400.py`)
+### Layer 5: Catalyst Hub (`server_7400.py`)
 - Python HTTP server with embedded HTML/CSS/JS frontend.
 - Uses `agentplay.facts` and `agentplay.health` to compute:
   - **Run Health Score**: Starts at 100, penalized for repetitive errors, long tool timeouts, or high failure rates.
@@ -280,7 +280,7 @@ C:\Users\akhil\AppData\Roaming\Python\Python314\Scripts\agentplay.exe export --l
    It automatically discovers your agent sessions, uploads your latest map, and keeps live sync running!
 
 **Option B — Web UI (Drag & Drop)**:
-1. Open the Hackathon Control Hub URL (e.g., `http://192.168.1.50:7400` or `http://127.0.0.1:7400`).
+1. Open the Catalyst Hub URL (e.g., `http://192.168.1.50:7400` or `http://127.0.0.1:7400`).
 2. Click **"Upload session"** in the top-right corner.
 3. Enter your **Name** and **Team**, select `session.json.gz`, and click **Upload**.
 

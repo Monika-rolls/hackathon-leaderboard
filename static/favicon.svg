@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="9" cy="9" r="6" fill="#1a73e8"/><circle cx="23" cy="9" r="6" fill="#ea4335"/><circle cx="9" cy="23" r="6" fill="#f9ab00"/><circle cx="23" cy="23" r="6" fill="#1e8e3e"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><title>Catalyst</title>
+<defs>
+<linearGradient id="t" gradientUnits="userSpaceOnUse" x1="2" y1="0" x2="30" y2="0"><stop offset="0" stop-color="#5b6cf0"/><stop offset=".5" stop-color="#c2489a"/><stop offset="1" stop-color="#ea4335"/></linearGradient>
+<linearGradient id="r" gradientUnits="userSpaceOnUse" x1="0" y1="2" x2="0" y2="30"><stop offset="0" stop-color="#ea4335"/><stop offset=".45" stop-color="#f9ab00"/><stop offset="1" stop-color="#34a853"/></linearGradient>
+<linearGradient id="b" gradientUnits="userSpaceOnUse" x1="30" y1="0" x2="2" y2="0"><stop offset="0" stop-color="#34a853"/><stop offset=".5" stop-color="#f9ab00"/><stop offset="1" stop-color="#ea4335"/></linearGradient>
+<linearGradient id="l" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="2"><stop offset="0" stop-color="#ea4335"/><stop offset=".5" stop-color="#9b5de5"/><stop offset="1" stop-color="#5b6cf0"/></linearGradient>
+</defs>
+<rect x="2" y="2" width="28" height="28" rx="6" fill="#fff"/>
+<g fill="none" stroke-width="2.6">
+<path stroke="url(#t)" d="M3.76 3.76A6 6 0 0 1 8 2H24A6 6 0 0 1 28.24 3.76"/>
+<path stroke="url(#r)" d="M28.24 3.76A6 6 0 0 1 30 8V24A6 6 0 0 1 28.24 28.24"/>
+<path stroke="url(#b)" d="M28.24 28.24A6 6 0 0 1 24 30H8A6 6 0 0 1 3.76 28.24"/>
+<path stroke="url(#l)" d="M3.76 28.24A6 6 0 0 1 2 24V8A6 6 0 0 1 3.76 3.76"/>
+</g>
+<text x="16" y="21.2" text-anchor="middle" font-family="'Segoe UI',Helvetica,Arial,sans-serif" font-weight="800" font-size="14" letter-spacing="-0.6" fill="#111">Ct</text>
+</svg>

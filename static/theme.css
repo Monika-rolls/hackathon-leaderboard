@@ -1,4 +1,4 @@
-/* Hackathon Control — shared theme. White canvas, keynote-scale type, four-colour geometry. */
+/* Catalyst — shared theme. White canvas, keynote-scale type, four-colour geometry. */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
 :root {
@@ -51,12 +51,7 @@ button, input, select { font: inherit; color: inherit; }
 }
 .nav .wrap { height: 100%; display: flex; align-items: center; gap: 24px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
-.brand-mark { display: grid; grid-template-columns: 8px 8px; gap: 3px; }
-.brand-mark i { width: 8px; height: 8px; border-radius: 50%; display: block; }
-.brand-mark i:nth-child(1) { background: var(--blue); }
-.brand-mark i:nth-child(2) { background: var(--red); }
-.brand-mark i:nth-child(3) { background: var(--yellow); }
-.brand-mark i:nth-child(4) { background: var(--green); }
+.brand-mark { width: 24px; height: 24px; display: block; }
 .nav-links { display: flex; gap: 4px; margin-left: auto; align-items: center; }
 .nav-links a {
   padding: 8px 14px; border-radius: 999px; color: var(--ink-2); font-weight: 500; font-size: 14px;

@@ -117,7 +117,7 @@ trap 'rm -rf "$STAGE"' EXIT
   cat "$SECRETS"
   printf 'HUB_DOMAIN=%s\nHUB_PUBLIC_URL=https://%s\n' "$DOMAIN" "$DOMAIN"
   printf 'HUB_EVENT_NAME=%s\nHUB_EVENT_START=%s\nHUB_EVENT_END=%s\nHUB_UTC_OFFSET_MINUTES=%s\n' \
-    "${EVENT_NAME:-Hackathon Control}" "${EVENT_START:-}" "${EVENT_END:-}" "${UTC_OFFSET_MINUTES:-330}"
+    "${EVENT_NAME:-Catalyst}" "${EVENT_START:-}" "${EVENT_END:-}" "${UTC_OFFSET_MINUTES:-330}"
 ) > "$STAGE/env"
 tar -czf "$STAGE/app.tgz" --exclude=__pycache__ -C "$ROOT" server_7400.py hub static Dockerfile .dockerignore \
   deploy/gcp/docker-compose.yml deploy/gcp/Caddyfile

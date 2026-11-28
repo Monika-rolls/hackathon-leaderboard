@@ -53,7 +53,7 @@ KNOWN_AGENTS = ("claude-code", "codex", "cursor", "copilot", "copilot-vscode", "
 @dataclass
 class Config:
     """One session's settings. Environment variables seed the first session; /admin edits them after."""
-    event_name: str = "Hackathon Control"
+    event_name: str = "Catalyst"
     event_start: datetime | None = None
     event_end: datetime | None = None
     utc_offset_min: int = 330

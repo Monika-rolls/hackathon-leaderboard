@@ -1,4 +1,4 @@
-"""Hackathon Control: live leaderboard for AI coding-agent activity.
+"""Catalyst: live leaderboard for AI coding-agent activity.
 
 Sessions: each hackathon event/round has its own board and database (hub/registry.py).
 Every page and /api/ call takes ?s=<slug>; without it, the active session is used.
@@ -121,7 +121,7 @@ def _public(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "HackathonControl/2"
+    server_version = "Catalyst/2"
     timeout = 30  # a client that stalls mid-body can't hold a thread forever
     registry: Registry
 
@@ -514,7 +514,7 @@ def load_config() -> Config:
         return parsed
 
     return Config(
-        event_name=os.environ.get("HUB_EVENT_NAME", "Hackathon Control").strip()[:80] or "Hackathon Control",
+        event_name=os.environ.get("HUB_EVENT_NAME", "Catalyst").strip()[:80] or "Catalyst",
         event_start=ts("HUB_EVENT_START"),
         event_end=ts("HUB_EVENT_END"),
         utc_offset_min=int(os.environ.get("HUB_UTC_OFFSET_MINUTES", "330")),
@@ -523,7 +523,7 @@ def load_config() -> Config:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Hackathon Control leaderboard server")
+    ap = argparse.ArgumentParser(description="Catalyst leaderboard server")
     ap.add_argument("--host", default=os.environ.get("HOST") or ("0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"))
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT") or 7400))
     ap.add_argument("--data-dir", default=os.environ.get("HUB_DATA_DIR") or str(BASE_DIR / "data"))
@@ -532,7 +532,7 @@ def main() -> None:
     Handler.registry = Registry(Path(args.data_dir), load_config())
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.daemon_threads = True
-    print(f"Hackathon Control on http://{args.host}:{args.port}  (data: {args.data_dir})")
+    print(f"Catalyst on http://{args.host}:{args.port}  (data: {args.data_dir})")
     server.serve_forever()
 
 

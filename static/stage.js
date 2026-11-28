@@ -2,7 +2,7 @@
 (async () => {
   const { esc, fmt, fmtMetric, avatar, badge, METRICS } = HC;
   const SCENE_MS = 12000;
-  const cfg = await HC.api("/api/config").catch(() => ({ name: "Hackathon Control" }));
+  const cfg = await HC.api("/api/config").catch(() => ({ name: "Catalyst" }));
   await HC.badges();
   document.title = `Stage · ${cfg.name}`;
   document.getElementById("eventName").textContent = cfg.name;
